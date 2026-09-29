@@ -13,6 +13,87 @@ let currentPlayer = 'X';
 let gameState = ['', '', '', '', '', '', '', '', ''];
 let scores = { X: 0, O: 0, Ties: 0 };
 
+// Sound Effects Synthesizer
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+const playSound = (type) => {
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    if (type === 'click') {
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'win') {
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+        oscillator.frequency.setValueAtTime(600, audioCtx.currentTime + 0.1);
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime + 0.2);
+        oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime + 0.3);
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.5);
+    } else if (type === 'draw') {
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+        oscillator.frequency.linearRampToValueAtTime(150, audioCtx.currentTime + 0.3);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.3);
+    } else if (type === 'restart') {
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+        oscillator.frequency.linearRampToValueAtTime(500, audioCtx.currentTime + 0.2);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.2);
+    }
+};
+
+const fireConfetti = () => {
+    // Only fire if confetti is loaded
+    if (typeof confetti === 'undefined') return;
+    
+    const duration = 3000;
+    const end = Date.now() + duration;
+    const colors = ['#06b6d4', '#ec4899'];
+
+    const frame = () => {
+        confetti({
+            particleCount: 5,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            colors: colors
+        });
+        confetti({
+            particleCount: 5,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            colors: colors
+        });
+
+        if (Date.now() < end) {
+            requestAnimationFrame(frame);
+        }
+    };
+    frame();
+};
+
 const winningConditions = [
     [0, 1, 2],
     [3, 4, 5],
@@ -34,6 +115,7 @@ const handleCellPlayed = (clickedCell, clickedCellIndex) => {
     clickedCell.innerHTML = currentPlayer;
     clickedCell.classList.add(currentPlayer.toLowerCase());
     clickedCell.classList.add('filled');
+    playSound('click');
 };
 
 const handlePlayerChange = () => {
@@ -81,6 +163,9 @@ const handleResultValidation = () => {
         scores[currentPlayer]++;
         updateScoreBoard();
         
+        playSound('win');
+        fireConfetti();
+
         // Highlight winning cells
         winningCells.forEach(index => {
             cells[index].classList.add('winning-cell');
@@ -99,6 +184,8 @@ const handleResultValidation = () => {
         scores.Ties++;
         updateScoreBoard();
         
+        playSound('draw');
+
         setTimeout(() => {
             showModal(`It's a Draw!`);
         }, 500);
@@ -127,6 +214,7 @@ const updateScoreBoard = () => {
 };
 
 const handleRestartGame = () => {
+    playSound('restart');
     gameActive = true;
     currentPlayer = 'X';
     gameState = ['', '', '', '', '', '', '', '', ''];
